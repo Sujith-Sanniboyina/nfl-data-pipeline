@@ -1,0 +1,6 @@
+nfl_data_py
+pandas
+sqlalchemy
+pytest
+python-dotenv
+psycopg2-binary
