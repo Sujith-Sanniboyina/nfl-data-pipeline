@@ -78,10 +78,10 @@ Why this API:
 - [x] Project structure setup
 - [x] Requirements defined
 - [x] Basic README documentation
-- [ ] Extract module (in progress)
-- [ ] Transform module
-- [ ] Load module with SQLite
-- [ ] Basic reporting
+- [x] Extract module
+- [x] Transform module
+- [x] Load module with SQLite
+- [ ] Basic reporting (in progress)
 - [ ] Unit tests
 - [ ] Complete documentation
 
