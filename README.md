@@ -81,8 +81,8 @@ Why this API:
 - [x] Extract module
 - [x] Transform module
 - [x] Load module with SQLite
-- [ ] Basic reporting (in progress)
-- [ ] Unit tests
+- [x] Basic reporting
+- [ ] Unit tests (in progress)
 - [ ] Complete documentation
 
 ---

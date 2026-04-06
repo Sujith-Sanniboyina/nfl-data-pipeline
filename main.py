@@ -2,6 +2,7 @@ import logging
 from extract.extract import NFLDataExtractor
 from transform.transform import TeamStatsAggregator
 from load.load import NFLDataLoader
+from analytics.analytics import NFLReportGenerator
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,9 +50,18 @@ def run_pipeline(seasons):
         logger.info(f"Loaded {team_games_count} team-game records")
         logger.info(f"Loaded {season_stats_count} team-season records")
 
-        top_teams = loader.get_top_teams(2023, limit=10)
-        print("\nTop 10 Teams by Win Percentage (2023)")
-        print(top_teams.to_string(index=False))
+        # Step 4: Analytics (NEW)
+        logger.info("Step 4: Analytics")
+        reporter = NFLReportGenerator()
+        
+        # Generate top teams report
+        top_teams_report = reporter.generate_top_teams_report(2023)
+        logger.info(f"Generated top teams report")
+        
+        # Generate team summary for Super Bowl champion
+        print("\n" + "=" * 50)
+        kc_summary = reporter.generate_team_summary('KC', 2023)
+        print(kc_summary)
 
     finally:
         loader.disconnect()
@@ -67,11 +77,15 @@ def main():
     try:
         pbp_data, team_games, season_stats, loader = run_pipeline(seasons)
 
-        print(f"\nPipeline Summary")
+        print(f"\n" + "=" * 50)
+        print("PIPELINE SUMMARY")
+        print("=" * 50)
         print(f"Extracted:   {len(pbp_data)} plays")
         print(f"Transformed: {len(team_games)} team-game records")
         print(f"Transformed: {len(season_stats)} team-season records")
         print(f"Loaded to:   data/nfl_data.db")
+        print(f"Reports:     top_teams_report.txt")
+        print("=" * 50)
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}", exc_info=True)
