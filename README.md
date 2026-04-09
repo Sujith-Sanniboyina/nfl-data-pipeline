@@ -2,7 +2,7 @@
 
 ![Python Version](https://img.shields.io/badge/python-3.8+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-mvp--in--progress-yellow)
+![Status](https://img.shields.io/badge/status-mvp--complete-brightgreen)
 
 An end-to-end data pipeline that extracts NFL play-by-play data, transforms it into analyzable formats, and loads it into a database with automated reporting.
 
@@ -38,18 +38,21 @@ This project demonstrates data engineering practices through a complete ETL (Ext
 
 ```
 nfl-data-pipeline/
+├── main.py
 ├── extract/
-│   └── nfl_api_client.py
+│   └── extract.py
 ├── transform/
-│   ├── clean.py
-│   └── aggregate.py
+│   └── transform.py
 ├── load/
 │   ├── schema.sql
-│   └── load_to_db.py
+│   └── load.py
 ├── analytics/
-│   └── generate_report.py
-├── notebooks/
+│   └── analytics.py
 ├── tests/
+│   ├── test_extract.py
+│   ├── test_transform.py
+│   └── test_load.py
+├── data/
 ├── requirements.txt
 └── README.md
 ```
@@ -73,7 +76,9 @@ Why this API:
 
 ---
 
-## Current Status
+## Project Status
+
+**COMPLETE** - MVP with working ETL pipeline, database integration, and automated reporting.
 
 - [x] Project structure setup
 - [x] Requirements defined
@@ -82,8 +87,8 @@ Why this API:
 - [x] Transform module
 - [x] Load module with SQLite
 - [x] Basic reporting
-- [ ] Unit tests (in progress)
-- [ ] Complete documentation
+- [x] Unit tests
+- [x] Complete documentation
 
 ---
 
@@ -111,33 +116,25 @@ pip install -r requirements.txt
 
 ## Usage
 
-Commands will be available once modules are implemented.
-
-Expected commands:
+Run the complete ETL pipeline:
 
 ```bash
 # Run full pipeline
-python run_pipeline.py
+python main.py
 
 # Run individual modules
-python extract/nfl_api_client.py
-python transform/aggregate.py
-python load/load_to_db.py
+python extract/extract.py
+python transform/transform.py
+python load/load.py
 
 # Generate report
-python analytics/generate_report.py
+python analytics/analytics.py
+
+# Run test cases for different modules
+python tests/test_extract.py
+python tests/test_transform.py
+python tests/test_load.py
 ```
-
----
-
-## Sample Output
-
-(To be added once pipeline is functional)
-
-- Top 10 teams by offensive yards
-- Weekly performance summaries
-- Data quality metrics
-- Sample database queries
 
 ---
 
@@ -167,12 +164,12 @@ Phase 3: Advanced Features
 
 ## Testing
 
-Run tests with:
+Run tests with pytest:
 ```bash
-pytest tests/
+pytest tests/ -v
+# Run with coverage report
+pytest tests/ -v --cov=extract --cov=transform --cov=load --cov-report=term-missing
 ```
-
-Tests are currently in development.
 
 ---
 
@@ -184,9 +181,9 @@ MIT License. See LICENSE file for details.
 
 ## Author
 
-Sujith Sanniboyina
-GitHub: https://github.com/Sujith-Sanniboyina
-LinkedIn: www.linkedin.com/in/sujith-sanniboyina
+**Sujith Sanniboyina**
+- GitHub: [@Sujith-Sanniboyina](https://github.com/Sujith-Sanniboyina)
+- LinkedIn: [Sujith Sanniboyina](https://www.linkedin.com/in/sujith-sanniboyina)
 
 ---
 
@@ -195,7 +192,3 @@ LinkedIn: www.linkedin.com/in/sujith-sanniboyina
 - nfl_data_py for providing access to NFL data
 - NFLverse community for maintaining datasets
 - Data engineering community for best practices
-
----
-
-This project is actively under development.

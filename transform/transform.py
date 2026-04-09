@@ -14,8 +14,16 @@ class TeamStatsAggregator:
     def aggregate_game_stats(self, pbp_df):
         logger.info("Starting team-level aggregation...")
 
+        if pbp_df.empty:
+            logger.warning("No play-by-play data provided")
+            return pd.DataFrame()
+
         if 'season_type' in pbp_df.columns:
             pbp_df = pbp_df[pbp_df['season_type'] == 'REG']
+
+        if 'game_id' not in pbp_df.columns:
+            logger.error("DataFrame missing 'game_id' column")
+            return pd.DataFrame()
 
         team_games = []
 
