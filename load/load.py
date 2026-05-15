@@ -1,132 +1,147 @@
-import sqlite3
+import os
 import pandas as pd
 import logging
 from pathlib import Path
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 logger = logging.getLogger(__name__)
 
 
-# Loads transformed NFL data into a SQLite database
+# Loads transformed NFL data into a database (PostgreSQL or SQLite)
 class NFLDataLoader:
 
-    def __init__(self, db_path="data/nfl_data.db"):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.connection = None
+    def __init__(self, db_path=None):
+        if db_path is None:
+            load_dotenv()
+            self.database_url = f"postgresql://{os.environ['DB_USER']}:{os.environ['DB_PASSWORD']}@{os.environ['DB_HOST']}:{os.environ['DB_PORT']}/{os.environ['DB_NAME']}"
+            self.is_postgresql = True
+        else:
+            self.database_url = f"sqlite:///{db_path}"
+            self.is_postgresql = False
+        
+        self.engine = None
+        logger.info(f"Database URL configured: {self.database_url}")
 
-    # Opens a connection to the database if one isn't already open
-    def connect(self):
-        if self.connection is None:
-            self.connection = sqlite3.connect(str(self.db_path))
-            logger.info(f"Connected to database: {self.db_path}")
+    # Get or create database engine
+    def get_engine(self):
+        if self.engine is None:
+            self.engine = create_engine(self.database_url)
+            if self.is_postgresql:
+                logger.info(f"Connected to PostgreSQL database")
+            else:
+                logger.info(f"Connected to SQLite database")
+        return self.engine
 
-        return self.connection
-
-    # Closes the database connection
+    # Close database connection
     def disconnect(self):
-        if self.connection:
-            self.connection.close()
-            self.connection = None
+        if self.engine:
+            self.engine.dispose()
+            self.engine = None
             logger.info("Database connection closed")
+
+    # For backward compatibility with main.py
+    def connect(self):
+        return self.get_engine()
 
     # Reads and runs the schema SQL file to set up the tables
     def create_schema(self, schema_path="load/schema.sql"):
-        conn = self.connect()
-        cursor = conn.cursor()
+        engine = self.get_engine()
 
         try:
             with open(schema_path, 'r') as f:
                 schema_sql = f.read()
 
-            cursor.executescript(schema_sql)
-            conn.commit()
+            with engine.connect() as conn:
+                statements = [s.strip() for s in schema_sql.split(';') if s.strip()]
+                for statement in statements:
+                    if statement:
+                        conn.execute(text(statement))
+                conn.commit()
+
             logger.info("Database schema created successfully")
 
         except Exception as e:
             logger.error(f"Error creating schema: {e}")
-            conn.rollback()
             raise
 
-    # Inserts team-season stats into the database and returns the row count
+    # Inserts team-season stats into the database
     def load_team_season_stats(self, df):
         if df.empty:
             logger.warning("No team-season data to load")
             return 0
 
-        conn = self.connect()
+        engine = self.get_engine()
 
         try:
-            df.to_sql('team_season_stats', conn, if_exists='replace', index=False)
+            df.to_sql('team_season_stats', engine, if_exists='replace', index=False)
+            
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT COUNT(*) FROM team_season_stats"))
+                count = result.scalar()
 
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM team_season_stats")
-            count = cursor.fetchone()[0]
-
-            conn.commit()
             logger.info(f"Loaded {count} team-season records")
-
             return count
 
         except Exception as e:
             logger.error(f"Error loading team-season stats: {e}")
-            conn.rollback()
             return 0
 
-    # Inserts team-game stats into the database and returns the row count
+    # Inserts team-game stats into the database
     def load_team_game_stats(self, df):
         if df.empty:
             logger.warning("No team-game data to load")
             return 0
 
-        conn = self.connect()
+        engine = self.get_engine()
 
         try:
-            df.to_sql('team_game_stats', conn, if_exists='replace', index=False)
+            df.to_sql('team_game_stats', engine, if_exists='replace', index=False)
+            
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT COUNT(*) FROM team_game_stats"))
+                count = result.scalar()
 
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM team_game_stats")
-            count = cursor.fetchone()[0]
-
-            conn.commit()
             logger.info(f"Loaded {count} team-game records")
-
             return count
 
         except Exception as e:
             logger.error(f"Error loading team-game stats: {e}")
-            conn.rollback()
             return 0
 
-    # Queries the top N teams for a given season ordered by win percentage
+    # Queries the top N teams for a given season
     def get_top_teams(self, season, limit=10):
-        conn = self.connect()
+        engine = self.get_engine()
 
-        query = """
-        SELECT season, team, wins, losses, win_percentage, total_points, total_points_allowed
-        FROM team_season_stats
-        WHERE season = ?
-        ORDER BY win_percentage DESC, total_points DESC
-        LIMIT ?
-        """
+        query = text("""
+            SELECT season, team, wins, losses, win_percentage, total_points, total_points_allowed
+            FROM team_season_stats
+            WHERE season = :season
+            ORDER BY win_percentage DESC, total_points DESC
+            LIMIT :limit
+        """)
 
-        df = pd.read_sql_query(query, conn, params=(season, limit))
+        with engine.connect() as conn:
+            df = pd.read_sql_query(query, conn, params={"season": season, "limit": limit})
         return df
 
     # Queries all stats for a specific team and season
     def get_team_stats(self, team, season):
-        conn = self.connect()
+        engine = self.get_engine()
 
-        query = """
-        SELECT *
-        FROM team_season_stats
-        WHERE team = ? AND season = ?
-        """
+        query = text("""
+            SELECT *
+            FROM team_season_stats
+            WHERE team = :team AND season = :season
+        """)
 
-        df = pd.read_sql_query(query, conn, params=(team, season))
+        with engine.connect() as conn:
+            df = pd.read_sql_query(query, conn, params={"team": team, "season": season})
         return df
 
 
 def main():
+    # Test with SQLite
     loader = NFLDataLoader("test_nfl_data.db")
 
     try:

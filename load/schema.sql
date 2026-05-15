@@ -6,12 +6,12 @@
 --
 DROP TABLE IF EXISTS team_season_stats;
 DROP TABLE IF EXISTS team_game_stats;
-DROP TABLE IF EXISTS raw_plays;
+DROP TABLE IF EXISTS raw_play;
 --
 -- Adding each table
 --
 CREATE TABLE team_season_stats (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    id               SERIAL PRIMARY KEY,
     season           INTEGER NOT NULL,
     team             TEXT    NOT NULL,
     total_points     INTEGER,
@@ -34,7 +34,7 @@ CREATE TABLE team_season_stats (
 );
 
 CREATE TABLE team_game_stats (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    id             SERIAL PRIMARY KEY,
     game_id        TEXT    NOT NULL,
     season         INTEGER,
     week           INTEGER,
