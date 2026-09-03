@@ -25,12 +25,16 @@ This project demonstrates data engineering practices through a complete ETL (Ext
 |----------|-------------|
 | **Languages** | Python 3.8+ |
 | **Data Processing** | Pandas, NumPy |
+| **Data Source** | nflreadpy (NFLverse API) |
 | **ETL Architecture** | Modular pipeline design (extract/transform/load separation) |
-| **Database** | SQLite (current), PostgreSQL (planned) |
-| **Testing** | pytest |
+| **Database** | PostgreSQL (Supabase - cloud) |
+| **ORM** | SQLAlchemy |
+| **Testing** | pytest, pytest-cov |
 | **Version Control** | Git, GitHub |
-| **Containerization** | Docker (planned) |
+| **Containerization** | Docker |
 | **CI/CD** | GitHub Actions (planned) |
+| **ML/AI** | Scikit-learn, XGBoost (planned) |
+| **Visualization** | Streamlit (planned) |
 
 ---
 
@@ -53,6 +57,7 @@ nfl-data-pipeline/
 │   ├── test_transform.py
 │   └── test_load.py
 ├── data/
+├── Dockerfile
 ├── requirements.txt
 └── README.md
 ```
