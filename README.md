@@ -12,7 +12,7 @@ An end-to-end data pipeline that extracts NFL play-by-play data, transforms it i
 
 This project demonstrates data engineering practices through a complete ETL (Extract, Transform, Load) pipeline:
 
-- Extract: Pull NFL play-by-play data using nfl_data_py
+- Extract: Pull NFL play-by-play and weekly player data using nflreadpy
 - Transform: Clean, standardize, and aggregate data with Pandas
 - Load: Store processed data in SQLite/PostgreSQL with an optimized schema
 - Report: Generate automated weekly team performance summaries
@@ -61,7 +61,7 @@ nfl-data-pipeline/
 
 ## Data Source
 
-This pipeline uses nfl_data_py, a Python library that provides access to NFLverse data, including:
+This pipeline uses nflreadpy (the actively maintained successor to the now-deprecated nfl_data_py), a Python library that provides access to NFLverse data, including:
 
 - Play-by-play data since 1999
 - Team statistics
@@ -189,6 +189,6 @@ MIT License. See LICENSE file for details.
 
 ## Acknowledgments
 
-- nfl_data_py for providing access to NFL data
+- nflreadpy for providing access to NFL data
 - NFLverse community for maintaining datasets
 - Data engineering community for best practices

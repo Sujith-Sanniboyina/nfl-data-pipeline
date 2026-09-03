@@ -11,8 +11,13 @@ logger = logging.getLogger(__name__)
 # Generates text reports from the NFL database
 class NFLReportGenerator:
 
-    def __init__(self, db_path="data/nfl_data.db"):
-        self.loader = NFLDataLoader(db_path)
+    # Pass an existing NFLDataLoader to reuse its connection (e.g. the one main.py
+    # already built against Supabase). If no loader is given, falls back to building
+    # one against db_path -- this keeps `python analytics/analytics.py` working
+    # standalone for quick local testing.
+    def __init__(self, db_path="data/nfl_data.db", loader=None):
+        self._owns_loader = loader is None
+        self.loader = loader if loader is not None else NFLDataLoader(db_path)
         self.db_path = db_path
 
     # Builds a top 10 teams report for a given season, saves it to a file, and prints it
@@ -53,7 +58,8 @@ class NFLReportGenerator:
             return str(output_path)
 
         finally:
-            self.loader.disconnect()
+            if self._owns_loader:
+                self.loader.disconnect()
 
     # Pulls stats for a specific team and season and returns a formatted summary string
     def generate_team_summary(self, team, season):
@@ -85,7 +91,8 @@ Defense:
             return summary
 
         finally:
-            self.loader.disconnect()
+            if self._owns_loader:
+                self.loader.disconnect()
 
 
 def main():

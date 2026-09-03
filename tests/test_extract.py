@@ -25,6 +25,15 @@ class TestNFLDataExtractor:
         except Exception as e:
             pytest.skip(f"API may be unavailable: {e}")
 
+    def test_fetch_weekly_player_data_returns_dataframe(self):
+        try:
+            df = self.extractor.fetch_weekly_player_data([2023])
+            assert isinstance(df, pd.DataFrame)
+            assert len(df) > 0
+            assert 'player_id' in df.columns
+        except Exception as e:
+            pytest.skip(f"API may be unavailable: {e}")
+
     def test_save_raw_data(self):
         test_df = pd.DataFrame({'test_col': [1, 2, 3]})
         self.extractor.save_raw_data(test_df, 2023)

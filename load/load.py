@@ -14,18 +14,28 @@ class NFLDataLoader:
     def __init__(self, db_path=None):
         if db_path is None:
             load_dotenv()
-            self.database_url = f"postgresql://{os.environ['DB_USER']}:{os.environ['DB_PASSWORD']}@{os.environ['DB_HOST']}:{os.environ['DB_PORT']}/{os.environ['DB_NAME']}"
+            # Supabase gives you one connection string (Project Settings -> Database ->
+            # Connection string -> URI) rather than separate host/user/password vars.
+            self.database_url = os.environ["DATABASE_URL"]
+            # Supabase requires SSL; add it if the caller didn't already specify it.
+            if "sslmode=" not in self.database_url:
+                separator = "&" if "?" in self.database_url else "?"
+                self.database_url = f"{self.database_url}{separator}sslmode=require"
             self.is_postgresql = True
         else:
             self.database_url = f"sqlite:///{db_path}"
             self.is_postgresql = False
-        
+
         self.engine = None
-        logger.info(f"Database URL configured: {self.database_url}")
+        # Never log the full URL -- it contains the DB password.
+        logger.info(f"Database configured: {'PostgreSQL (Supabase)' if self.is_postgresql else self.database_url}")
 
     # Get or create database engine
     def get_engine(self):
         if self.engine is None:
+            if not self.is_postgresql:
+                # SQLite needs the parent directory to already exist.
+                Path(self.database_url.replace("sqlite:///", "")).parent.mkdir(parents=True, exist_ok=True)
             self.engine = create_engine(self.database_url)
             if self.is_postgresql:
                 logger.info(f"Connected to PostgreSQL database")
@@ -43,6 +53,19 @@ class NFLDataLoader:
     # For backward compatibility with main.py
     def connect(self):
         return self.get_engine()
+
+    # Replaces all rows in a table without dropping it, so the constraints/indexes
+    # from schema.sql survive every run (df.to_sql(if_exists='replace') would instead
+    # drop the table and let pandas re-infer a schema with no PK/UNIQUE/indexes).
+    def _replace_table_data(self, table_name, df):
+        engine = self.get_engine()
+        with engine.begin() as conn:
+            conn.execute(text(f"DELETE FROM {table_name}"))
+        df.to_sql(table_name, engine, if_exists='append', index=False)
+
+        with engine.connect() as conn:
+            result = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+            return result.scalar()
 
     # Reads and runs the schema SQL file to set up the tables
     def create_schema(self, schema_path="load/schema.sql"):
@@ -71,15 +94,8 @@ class NFLDataLoader:
             logger.warning("No team-season data to load")
             return 0
 
-        engine = self.get_engine()
-
         try:
-            df.to_sql('team_season_stats', engine, if_exists='replace', index=False)
-            
-            with engine.connect() as conn:
-                result = conn.execute(text("SELECT COUNT(*) FROM team_season_stats"))
-                count = result.scalar()
-
+            count = self._replace_table_data('team_season_stats', df)
             logger.info(f"Loaded {count} team-season records")
             return count
 
@@ -93,20 +109,28 @@ class NFLDataLoader:
             logger.warning("No team-game data to load")
             return 0
 
-        engine = self.get_engine()
-
         try:
-            df.to_sql('team_game_stats', engine, if_exists='replace', index=False)
-            
-            with engine.connect() as conn:
-                result = conn.execute(text("SELECT COUNT(*) FROM team_game_stats"))
-                count = result.scalar()
-
+            count = self._replace_table_data('team_game_stats', df)
             logger.info(f"Loaded {count} team-game records")
             return count
 
         except Exception as e:
             logger.error(f"Error loading team-game stats: {e}")
+            return 0
+
+    # Inserts player-game stats into the database
+    def load_player_game_stats(self, df):
+        if df.empty:
+            logger.warning("No player-game data to load")
+            return 0
+
+        try:
+            count = self._replace_table_data('player_game_stats', df)
+            logger.info(f"Loaded {count} player-game records")
+            return count
+
+        except Exception as e:
+            logger.error(f"Error loading player-game stats: {e}")
             return 0
 
     # Queries the top N teams for a given season

@@ -155,6 +155,60 @@ class TeamStatsAggregator:
         return season_stats
 
 
+# Prepares weekly player-level data (from nflreadpy's load_player_stats) for loading
+# into player_game_stats. This feeds the prop predictor model.
+class PlayerStatsTransformer:
+
+    # Maps nflreadpy's load_player_stats() column names onto our schema's column names.
+    COLUMN_MAP = {
+        "player_id": "player_id",
+        "player_display_name": "player_name",
+        "position": "position",
+        "team": "team",
+        "opponent_team": "opponent",
+        "season": "season",
+        "week": "week",
+        "rushing_yards": "rushing_yards",
+        "carries": "rushing_attempts",
+        "receiving_yards": "receiving_yards",
+        "receptions": "receptions",
+        "targets": "targets",
+        "passing_yards": "passing_yards",
+        "attempts": "passing_attempts",
+        "rushing_tds": "rushing_tds",
+        "receiving_tds": "receiving_tds",
+        "passing_tds": "passing_tds",
+    }
+
+    def prepare_player_game_stats(self, weekly_df):
+        if weekly_df.empty:
+            logger.warning("No weekly player data provided")
+            return pd.DataFrame()
+
+        if "season_type" in weekly_df.columns:
+            weekly_df = weekly_df[weekly_df["season_type"] == "REG"]
+
+        # Only keep columns we actually have and know how to map.
+        available_source_cols = [c for c in self.COLUMN_MAP if c in weekly_df.columns]
+        missing = set(self.COLUMN_MAP) - set(available_source_cols)
+        if missing:
+            logger.warning(f"Weekly data missing expected columns (skipping): {missing}")
+
+        prepared = weekly_df[available_source_cols].rename(
+            columns={k: self.COLUMN_MAP[k] for k in available_source_cols}
+        )
+
+        # home_game requires joining against the schedule, which we don't have here yet.
+        # Left as NULL for now -- fine for the model's first pass since most prop-relevant
+        # signal comes from rolling per-player stats, not home/away splits.
+        prepared["home_game"] = None
+
+        prepared = prepared.dropna(subset=["player_id", "season", "week"])
+        logger.info(f"Prepared {len(prepared)} player-game rows")
+
+        return prepared
+
+
 def main():
     print("Transform module ready. Run extract first to get data.")
 
