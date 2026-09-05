@@ -2,9 +2,9 @@ import logging
 from pathlib import Path
 
 import joblib
-from scipy.stats import norm
 
 from model.features import FeatureBuilder
+from model.probability import predict_p_over
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -23,12 +23,16 @@ class PropPredictor:
         if not path.exists():
             raise FileNotFoundError(f"No trained model found at {path}. Run model/train.py first.")
 
-        artifact = joblib.load(path)
-        self.model = artifact["model"]
-        self.residual_std = artifact["residual_std"]
-        self.feature_cols = artifact["feature_cols"]
+        self.artifact = joblib.load(path)
+        self.model = self.artifact["model"]
+        self.feature_cols = self.artifact["feature_cols"]
         self.stat_column = stat_column
         self.feature_builder = FeatureBuilder(stat_column)
+
+        cal_path = MODEL_DIR / "calibration" / f"{stat_column}_calibration.joblib"
+        self.calibration = joblib.load(cal_path) if cal_path.exists() else None
+        if self.calibration is not None:
+            logger.info(f"Loaded calibration for {stat_column} (method={self.calibration['method']})")
 
     def predict(self, player_game_stats_df, schedules_df, player_id, season, week, team, opponent, home_game, line):
         feature_row, feature_cols = self.feature_builder.build_for_prediction(
@@ -46,10 +50,10 @@ class PropPredictor:
         X = feature_row[self.feature_cols].values.reshape(1, -1)
         predicted_mean = float(self.model.predict(X)[0])
 
-        # P(actual > line), treating the model's prediction error as normally
-        # distributed around the predicted mean (residual_std came from the
-        # held-out backtest in train.py, not the training data itself).
-        p_over = float(1 - norm.cdf(line, loc=predicted_mean, scale=self.residual_std))
+        # Same probability pipeline used by backtest.py and evaluate_v2.py:
+        # per-prediction residual scale (falls back to a global constant if no
+        # variance model was fit) -> Normal CDF -> calibration, if available.
+        p_over = float(predict_p_over(self.artifact, predicted_mean, line, self.calibration))
         p_under = 1 - p_over
 
         recommendation = "Over" if p_over >= 0.5 else "Under"
@@ -78,8 +82,8 @@ def main():
 
     seasons = [2023, 2024]
     weekly = nfl.load_player_stats(seasons).to_pandas()
-    player_stats = PlayerStatsTransformer().prepare_player_game_stats(weekly)
     schedules = nfl.load_schedules(seasons).to_pandas()
+    player_stats = PlayerStatsTransformer().prepare_player_game_stats(weekly, schedules_df=schedules)
 
     # Example: Derrick Henry (BAL), predicting his week 10 2024 rushing total
     # against CIN. This game already happened (actual: 68 yards) -- using a

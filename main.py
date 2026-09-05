@@ -31,6 +31,12 @@ def run_pipeline(seasons):
     weekly_data = extractor.fetch_and_save_weekly_seasons(seasons)
     logger.info(f"Extracted {len(weekly_data)} player-week rows across {len(seasons)} seasons")
 
+    # Step 1c: Schedules -- needed so PlayerStatsTransformer can correctly set
+    # home_game (previously always left NULL/False; see transform.py).
+    import nflreadpy as nfl
+    schedules = nfl.load_schedules(seasons).to_pandas()
+    logger.info(f"Loaded {len(schedules)} scheduled games across {len(seasons)} seasons")
+
     # Step 2: Transform
     logger.info("Step 2: Transform")
     aggregator = TeamStatsAggregator()
@@ -42,7 +48,7 @@ def run_pipeline(seasons):
     logger.info(f"Created {len(season_stats)} team-season records")
 
     player_transformer = PlayerStatsTransformer()
-    player_game_stats = player_transformer.prepare_player_game_stats(weekly_data)
+    player_game_stats = player_transformer.prepare_player_game_stats(weekly_data, schedules_df=schedules)
     logger.info(f"Created {len(player_game_stats)} player-game records")
 
     # Step 3: Load
@@ -79,9 +85,14 @@ def run_pipeline(seasons):
 
 
 def main():
-    # Last 3 completed seasons -- add 2026 once the season kicks off and nflverse
-    # starts publishing weekly data for it.
-    seasons = [2023, 2024, 2025]
+    # 2019 onward: train.py needs several seasons before CALIBRATION_SEASON (2023)
+    # to train the base model on, plus 2023 (calibration) and 2024 (final test) --
+    # see model/data.py. 2025 is included too so the DB stays current for live
+    # predictions once that season's weekly data is available. Previously this only
+    # loaded [2023, 2024, 2025], which meant calibrate.py/backtest.py/evaluate.py --
+    # which all read from this DB -- only ever saw 2023-2025, a much smaller and
+    # different dataset than what train.py was actually training the model on.
+    seasons = list(range(2019, 2027))
 
     try:
         pbp_data, team_games, season_stats, player_game_stats, loader = run_pipeline(seasons)

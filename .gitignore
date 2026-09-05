@@ -209,3 +209,5 @@ __marimo__/
 # Raw extracted data -- regeneratable by running the pipeline, not checked in
 data/
 top_teams_report.txt
+model/artifacts/
+.DS_Store

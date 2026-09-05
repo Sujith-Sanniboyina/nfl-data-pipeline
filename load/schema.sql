@@ -61,6 +61,14 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     receiving_yards    INTEGER,
     receptions         INTEGER,
     targets            INTEGER,
+    -- Added: target_share/air_yards_share/wopr were already referenced by
+    -- model/features.py's STAT_USAGE_COLUMNS for receiving_yards, but were never
+    -- actually stored, so those usage features silently never got built. These
+    -- three are typically stronger predictors of receiving-yards variance than
+    -- raw target count, since they normalize for team pass volume.
+    target_share       REAL,
+    air_yards_share     REAL,
+    wopr                REAL,
     passing_yards      INTEGER,
     passing_attempts   INTEGER,
     rushing_tds        INTEGER,

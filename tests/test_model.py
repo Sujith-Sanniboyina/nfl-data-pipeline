@@ -40,7 +40,7 @@ class TestFeatureBuilder:
 
     def test_build_produces_expected_columns(self):
         features_df, feature_cols = self.fb.build(self.df)
-        assert "roll3" in feature_cols
+        assert "roll5" in feature_cols
         assert "opp_def_avg_allowed" in feature_cols
         for col in feature_cols:
             assert col in features_df.columns
@@ -52,15 +52,15 @@ class TestFeatureBuilder:
         assert 1 not in test_player_rows["week"].values
 
     def test_rolling_features_have_no_leakage(self):
-        # roll3 for week 3 must equal the mean of weeks 1-2's actual values,
+        # roll5 for week 3 must equal the mean of weeks 1-2's actual values,
         # never including week 3's own value.
         features_df, _ = self.fb.build(self.df)
         player_df = self.df[self.df["player_id"] == "TEST-RB-1"].sort_values("week")
-        week3_roll3 = features_df[
+        week3_roll5 = features_df[
             (features_df["player_id"] == "TEST-RB-1") & (features_df["week"] == 3)
-        ]["roll3"].iloc[0]
+        ]["roll5"].iloc[0]
         expected = player_df[player_df["week"].isin([1, 2])]["rushing_yards"].mean()
-        assert abs(week3_roll3 - expected) < 0.01
+        assert abs(week3_roll5 - expected) < 0.01
 
     def test_build_for_prediction_returns_single_row(self):
         feature_row, feature_cols = self.fb.build_for_prediction(

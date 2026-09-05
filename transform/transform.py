@@ -173,6 +173,9 @@ class PlayerStatsTransformer:
         "receiving_yards": "receiving_yards",
         "receptions": "receptions",
         "targets": "targets",
+        "target_share": "target_share",
+        "air_yards_share": "air_yards_share",
+        "wopr": "wopr",
         "passing_yards": "passing_yards",
         "attempts": "passing_attempts",
         "rushing_tds": "rushing_tds",
@@ -180,7 +183,7 @@ class PlayerStatsTransformer:
         "passing_tds": "passing_tds",
     }
 
-    def prepare_player_game_stats(self, weekly_df):
+    def prepare_player_game_stats(self, weekly_df, schedules_df=None):
         if weekly_df.empty:
             logger.warning("No weekly player data provided")
             return pd.DataFrame()
@@ -198,20 +201,39 @@ class PlayerStatsTransformer:
             columns={k: self.COLUMN_MAP[k] for k in available_source_cols}
         )
 
-        # home_game requires joining against the schedule, which we don't have here yet.
-        # Left as NULL for now -- fine for the model's first pass since most prop-relevant
-        # signal comes from rolling per-player stats, not home/away splits.
-        prepared["home_game"] = None
+        prepared = self._add_home_game(prepared, schedules_df)
 
         prepared = prepared.dropna(subset=["player_id", "season", "week"])
         logger.info(f"Prepared {len(prepared)} player-game rows")
 
         return prepared
 
+    def _add_home_game(self, prepared, schedules_df):
+        """
+        Sets home_game from the schedule (team == schedule's home_team for that
+        season/week). Previously this was always left as NULL, which meant every
+        downstream consumer's `.fillna(False)` turned it into a constant 0 --
+        home/away was never actually a real feature. Falls back to leaving it NULL
+        (old behavior) if no schedule is supplied, so this stays backward compatible.
+        """
+        required_cols = {"season", "week", "home_team", "away_team"}
+        if schedules_df is None or not required_cols.issubset(schedules_df.columns):
+            logger.warning("No usable schedules_df provided; home_game will be left null (uninformative)")
+            prepared["home_game"] = None
+            return prepared
 
-def main():
-    print("Transform module ready. Run extract first to get data.")
+        # Unpivot schedule rows (one row per game) into one row per (season, week, team)
+        # with an is_home flag, so it can be merged directly onto prepared -- merging on
+        # just (season, week) would fan out, since each week has many games/home_teams.
+        home_side = schedules_df[["season", "week", "home_team"]].rename(columns={"home_team": "team"})
+        home_side["is_home"] = True
+        away_side = schedules_df[["season", "week", "away_team"]].rename(columns={"away_team": "team"})
+        away_side["is_home"] = False
+        home_lookup = pd.concat([home_side, away_side], ignore_index=True).drop_duplicates(
+            subset=["season", "week", "team"]
+        )
 
-
-if __name__ == "__main__":
-    main()
+        prepared = prepared.merge(home_lookup, on=["season", "week", "team"], how="left")
+        prepared["home_game"] = prepared["is_home"].fillna(False)
+        prepared = prepared.drop(columns=["is_home"])
+        return prepared
