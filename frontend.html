@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prop Edge — NFL Player Prop Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12161A;
+    --panel: #1B2127;
+    --panel-raised: #212831;
+    --border: #2B333C;
+    --text: #ECEDEE;
+    --text-muted: #8B98A3;
+    --amber: #F2A93B;
+    --amber-dim: #7A5A22;
+    --green: #45A564;
+    --green-dim: #1E3324;
+    --red: #C1443C;
+    --red-dim: #3A2020;
+    --field-line: #2E3841;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    background: var(--bg);
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(255,255,255,0.015) 79px, rgba(255,255,255,0.015) 80px);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap{
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content: space-between;
+    margin-bottom: 36px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+  }
+
+  header h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    font-size: 30px;
+    letter-spacing: 0.5px;
+    margin:0;
+    color: var(--text);
+  }
+  header h1 span{ color: var(--amber); }
+
+  header p{
+    margin:0;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .field{
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .field:last-child{ margin-bottom: 0; }
+
+  label{
+    display:block;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  input[type="text"], input[type="number"], select{
+    width:100%;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 7px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus{
+    border-color: var(--amber);
+  }
+  input::placeholder{ color: #56616C; }
+
+  select{
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%238B98A3'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 34px;
+  }
+
+  .autocomplete-list{
+    position:absolute;
+    top: calc(100% + 4px);
+    left:0; right:0;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    max-height: 240px;
+    overflow-y:auto;
+    z-index: 20;
+    display:none;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  }
+  .autocomplete-list.show{ display:block; }
+  .ac-item{
+    padding: 10px 14px;
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ac-item:last-child{ border-bottom:none; }
+  .ac-item:hover, .ac-item.active{ background: rgba(242,169,59,0.08); }
+  .ac-item .name{ color: var(--text); }
+  .ac-item .meta{ color: var(--text-muted); font-size: 12px; font-family:'Oswald', sans-serif; letter-spacing: 0.3px; }
+  .ac-empty{ padding: 14px; color: var(--text-muted); font-size: 13px; }
+
+  .segmented{
+    display:flex;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 3px;
+    gap: 3px;
+  }
+  .segmented button{
+    flex:1;
+    background:none;
+    border:none;
+    color: var(--text-muted);
+    padding: 10px 0;
+    font-family:'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    border-radius: 5px;
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .segmented button.active{
+    background: var(--amber);
+    color: #1B1400;
+  }
+
+  .two-col{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .line-input-group{
+    display:flex;
+    align-items:stretch;
+    gap: 10px;
+  }
+  .line-input-group input{ flex:1; }
+  .line-unit{
+    display:flex;
+    align-items:center;
+    padding: 0 14px;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-family:'Oswald', sans-serif;
+    letter-spacing: 0.4px;
+  }
+
+  .predict-btn{
+    width:100%;
+    margin-top: 26px;
+    background: var(--amber);
+    color: #1B1400;
+    border:none;
+    padding: 15px 0;
+    border-radius: 7px;
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size: 16px;
+    letter-spacing: 0.4px;
+    cursor:pointer;
+    transition: transform 0.08s ease, background 0.15s ease;
+  }
+  .predict-btn:hover{ background: #FFBB52; }
+  .predict-btn:active{ transform: scale(0.99); }
+  .predict-btn:disabled{
+    background: #3A3F30;
+    color: #6B7060;
+    cursor: not-allowed;
+  }
+
+  .error-msg{
+    color: var(--red);
+    font-size: 13px;
+    margin-top: 14px;
+    display:none;
+  }
+  .error-msg.show{ display:block; }
+
+  #result{
+    display:none;
+  }
+  #result.show{ display:block; }
+
+  .result-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom: 22px;
+  }
+  .result-head .player-name{
+    font-family:'Oswald', sans-serif;
+    font-size: 20px;
+    font-weight:600;
+  }
+  .result-head .matchup{
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .badge{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    padding: 7px 14px;
+    border-radius: 6px;
+  }
+  .badge.over{ background: var(--green-dim); color: var(--green); border: 1px solid rgba(69,165,100,0.35); }
+  .badge.under{ background: var(--red-dim); color: var(--red); border: 1px solid rgba(193,68,60,0.35); }
+
+  .prediction-hero{
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    gap: 40px;
+    padding: 24px 0 8px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .hero-stat{ text-align:center; }
+  .hero-stat .num{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    font-size: 44px;
+    line-height:1;
+  }
+  .hero-stat.predicted .num{ color: var(--amber); }
+  .hero-stat.line .num{ color: var(--text-muted); font-size: 32px; }
+  .hero-stat .lbl{
+    color: var(--text-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 6px;
+  }
+  .hero-divider{
+    color: var(--border);
+    font-size: 28px;
+    font-weight:300;
+    align-self:center;
+    padding-bottom: 10px;
+  }
+
+  .meter{
+    position: relative;
+    height: 8px;
+    background: var(--field-line);
+    border-radius: 4px;
+    margin: 6px 0 8px;
+  }
+  .meter .fill{
+    position:absolute;
+    top:0; left:0; height:100%;
+    border-radius: 4px;
+    background: var(--amber);
+    transition: width 0.4s ease;
+  }
+  .meter .line-marker{
+    position:absolute;
+    top:-4px;
+    width: 2px;
+    height: 16px;
+    background: var(--text);
+  }
+  .meter-labels{
+    display:flex;
+    justify-content:space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family:'Oswald', sans-serif;
+  }
+
+  .confidence-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .confidence-row .lbl{ color: var(--text-muted); font-size: 13px; }
+  .confidence-row .val{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size: 18px;
+  }
+
+  .disclaimer{
+    text-align:center;
+    color: #566068;
+    font-size: 11.5px;
+    margin-top: 28px;
+    line-height: 1.6;
+  }
+  ::-webkit-scrollbar{ width: 8px; }
+  ::-webkit-scrollbar-thumb{ background: #333C45; border-radius: 4px; }
+  @media (max-width: 480px){
+    .two-col{ grid-template-columns: 1fr; }
+    .prediction-hero{ gap: 20px; }
+    .hero-stat .num{ font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Prop<span>Edge</span></h1>
+      <p>Model-driven rushing &amp; receiving yard predictions</p>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="field">
+      <label for="playerInput">Player</label>
+      <input type="text" id="playerInput" placeholder="Search a player, e.g. Derrick Henry" autocomplete="off">
+      <div class="autocomplete-list" id="acList"></div>
+    </div>
+
+    <div class="field">
+      <label>Prop type</label>
+      <div class="segmented" id="propSegment">
+        <button type="button" class="active" data-prop="rushing">Rushing yards</button>
+        <button type="button" data-prop="receiving">Receiving yards</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="lineInput">Line (the over/under number from the book)</label>
+      <div class="line-input-group">
+        <input type="number" id="lineInput" placeholder="60.5" step="0.5" min="0">
+        <div class="line-unit">YDS</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="two-col">
+        <div>
+          <label for="teamSelect">Player's team</label>
+          <select id="teamSelect"></select>
+        </div>
+        <div>
+          <label for="oppSelect">Opponent</label>
+          <select id="oppSelect"></select>
+        </div>
+      </div>
+    </div>
+
+    <button class="predict-btn" id="predictBtn">Run prediction</button>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="card" id="result">
+    <div class="result-head">
+      <div>
+        <div class="player-name" id="resPlayerName">—</div>
+        <div class="matchup" id="resMatchup">—</div>
+      </div>
+      <div class="badge" id="resBadge">OVER</div>
+    </div>
+    <div class="prediction-hero">
+      <div class="hero-stat predicted">
+        <div class="num" id="resPredicted">0</div>
+        <div class="lbl">Model projection</div>
+      </div>
+      <div class="hero-divider">vs</div>
+      <div class="hero-stat line">
+        <div class="num" id="resLine">0</div>
+        <div class="lbl">Betting line</div>
+      </div>
+    </div>
+    <div class="meter">
+      <div class="fill" id="meterFill"></div>
+      <div class="line-marker" id="meterLine"></div>
+    </div>
+    <div class="meter-labels">
+      <span>0</span>
+      <span id="meterMax">—</span>
+    </div>
+    <div class="confidence-row">
+      <span class="lbl">Model confidence</span>
+      <span class="val" id="resConfidence">—</span>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Predictions are generated by your model based on the inputs provided.<br>
+    For entertainment and informational purposes only — not betting advice.
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------
+// TEAMS (use the correct abbreviations from your schedule)
+// ---------------------------------------------------------------------
+const TEAMS = [
+  ["ARI","Arizona Cardinals"],["ATL","Atlanta Falcons"],["BAL","Baltimore Ravens"],
+  ["BUF","Buffalo Bills"],["CAR","Carolina Panthers"],["CHI","Chicago Bears"],
+  ["CIN","Cincinnati Bengals"],["CLE","Cleveland Browns"],["DAL","Dallas Cowboys"],
+  ["DEN","Denver Broncos"],["DET","Detroit Lions"],["GB","Green Bay Packers"],
+  ["HOU","Houston Texans"],["IND","Indianapolis Colts"],["JAX","Jacksonville Jaguars"],
+  ["KC","Kansas City Chiefs"],["LAC","Los Angeles Chargers"],["LA","Los Angeles Rams"],
+  ["LV","Las Vegas Raiders"],["MIA","Miami Dolphins"],["MIN","Minnesota Vikings"],
+  ["NE","New England Patriots"],["NO","New Orleans Saints"],["NYG","New York Giants"],
+  ["NYJ","New York Jets"],["PHI","Philadelphia Eagles"],["PIT","Pittsburgh Steelers"],
+  ["SEA","Seattle Seahawks"],["SF","San Francisco 49ers"],["TB","Tampa Bay Buccaneers"],
+  ["TEN","Tennessee Titans"],["WAS","Washington Commanders"]
+];
+
+const STATIC_PLAYERS = [
+  { name: "Derrick Henry", team: "BAL", pos: "RB" },
+  { name: "Saquon Barkley", team: "PHI", pos: "RB" },
+  { name: "Bijan Robinson", team: "ATL", pos: "RB" },
+  { name: "Jahmyr Gibbs", team: "DET", pos: "RB" },
+  { name: "Christian McCaffrey", team: "SF", pos: "RB" },
+  { name: "Jonathan Taylor", team: "IND", pos: "RB" },
+  { name: "De'Von Achane", team: "MIA", pos: "RB" },
+  { name: "Kyren Williams", team: "LA", pos: "RB" },
+  { name: "James Cook", team: "BUF", pos: "RB" },
+  { name: "Josh Jacobs", team: "GB", pos: "RB" },
+  { name: "Breece Hall", team: "NYJ", pos: "RB" },
+  { name: "Kenneth Walker III", team: "SEA", pos: "RB" },
+  { name: "Alvin Kamara", team: "NO", pos: "RB" },
+  { name: "Chase Brown", team: "CIN", pos: "RB" },
+  { name: "Bucky Irving", team: "TB", pos: "RB" },
+  { name: "Ja'Marr Chase", team: "CIN", pos: "WR" },
+  { name: "CeeDee Lamb", team: "DAL", pos: "WR" },
+  { name: "Justin Jefferson", team: "MIN", pos: "WR" },
+  { name: "Amon-Ra St. Brown", team: "DET", pos: "WR" },
+  { name: "Puka Nacua", team: "LA", pos: "WR" },
+  { name: "A.J. Brown", team: "PHI", pos: "WR" },
+  { name: "Malik Nabers", team: "NYG", pos: "WR" },
+  { name: "Nico Collins", team: "HOU", pos: "WR" },
+  { name: "Drake London", team: "ATL", pos: "WR" },
+  { name: "Garrett Wilson", team: "NYJ", pos: "WR" },
+  { name: "Tyreek Hill", team: "MIA", pos: "WR" },
+  { name: "Davante Adams", team: "LA", pos: "WR" },
+  { name: "Mike Evans", team: "TB", pos: "WR" },
+  { name: "Brian Thomas Jr.", team: "JAX", pos: "WR" },
+  { name: "Ladd McConkey", team: "LAC", pos: "WR" },
+  { name: "Travis Kelce", team: "KC", pos: "TE" },
+  { name: "Sam LaPorta", team: "DET", pos: "TE" },
+  { name: "Trey McBride", team: "ARI", pos: "TE" },
+  { name: "George Kittle", team: "SF", pos: "TE" },
+  { name: "Brock Bowers", team: "LV", pos: "TE" }
+];
+
+
+const teamSelect = document.getElementById('teamSelect');
+const oppSelect = document.getElementById('oppSelect');
+TEAMS.forEach(([abbr, name]) => {
+  teamSelect.add(new Option(`${name} (${abbr})`, abbr));
+  oppSelect.add(new Option(`${name} (${abbr})`, abbr));
+});
+oppSelect.selectedIndex = 1;
+
+let selectedProp = "rushing";
+document.querySelectorAll('#propSegment button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#propSegment button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedProp = btn.dataset.prop;
+  });
+});
+
+
+const playerInput = document.getElementById('playerInput');
+const acList = document.getElementById('acList');
+let allPlayers = [...STATIC_PLAYERS];  // start with static list
+let activeIndex = -1;
+
+// Attempt to fetch players from API to enrich autocomplete
+async function enrichPlayers() {
+  try {
+    const res = await fetch('http://localhost:8000/players');
+    if (!res.ok) throw new Error('API not reachable');
+    const data = await res.json();
+    const apiPlayers = data.map(p => ({ name: p.player_name, team: p.team, pos: p.position || '' }));
+    // Merge with static (avoid duplicates by name)
+    const existingNames = new Set(allPlayers.map(p => p.name.toLowerCase()));
+    apiPlayers.forEach(p => {
+      if (!existingNames.has(p.name.toLowerCase())) {
+        allPlayers.push(p);
+        existingNames.add(p.name.toLowerCase());
+      }
+    });
+    console.log(`Loaded ${allPlayers.length} players (static + API)`);
+  } catch (e) {
+    console.warn('Could not load players from API, using static list only.', e);
+  }
+}
+enrichPlayers();
+
+function renderMatches(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) { acList.classList.remove('show'); return; }
+  const matches = allPlayers
+    .filter(p => p.name.toLowerCase().includes(q))
+    .slice(0, 8);
+
+  acList.innerHTML = "";
+  activeIndex = -1;
+
+  if (matches.length === 0) {
+    acList.innerHTML = `<div class="ac-empty">No match — you can still type any name and submit.</div>`;
+    acList.classList.add('show');
+    return;
+  }
+
+  matches.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'ac-item';
+    row.innerHTML = `<span class="name">${p.name}</span><span class="meta">${p.pos || ''} · ${p.team || ''}</span>`;
+    row.addEventListener('click', () => selectPlayer(p));
+    acList.appendChild(row);
+  });
+  acList.classList.add('show');
+}
+
+function selectPlayer(p) {
+  playerInput.value = p.name;
+  acList.classList.remove('show');
+  if (p.team) teamSelect.value = p.team;
+  // Auto‑suggest prop based on position
+  if (p.pos) {
+    const suggested = (p.pos === 'RB' || p.pos === 'FB') ? 'rushing' : 'receiving';
+    selectedProp = suggested;
+    document.querySelectorAll('#propSegment button').forEach(b => {
+      b.classList.toggle('active', b.dataset.prop === suggested);
+    });
+  }
+}
+
+playerInput.addEventListener('input', e => renderMatches(e.target.value));
+playerInput.addEventListener('focus', e => { if (e.target.value) renderMatches(e.target.value); });
+document.addEventListener('click', e => {
+  if (!e.target.closest('.field')) acList.classList.remove('show');
+});
+playerInput.addEventListener('keydown', e => {
+  const items = [...acList.querySelectorAll('.ac-item')];
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex = Math.min(activeIndex + 1, items.length - 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); activeIndex = Math.max(activeIndex - 1, 0); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (activeIndex >= 0) items[activeIndex].click(); }
+  else return;
+  items.forEach((it, i) => it.classList.toggle('active', i === activeIndex));
+});
+
+
+const API_URL = "http://localhost:8000/predict";
+
+async function getPrediction(payload) {
+  const requestBody = { ...payload, season: 2026, week: 1 };
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody)
+  });
+  if (!response.ok) {
+    let detail = "Prediction failed";
+    try { const err = await response.json(); detail = err.detail || detail; } catch (_) {}
+    throw new Error(detail);
+  }
+  return await response.json();
+}
+
+
+const predictBtn = document.getElementById('predictBtn');
+const errorMsg = document.getElementById('errorMsg');
+const resultCard = document.getElementById('result');
+
+predictBtn.addEventListener('click', handlePredict);
+
+async function handlePredict() {
+  errorMsg.classList.remove('show');
+  resultCard.classList.remove('show');
+  predictBtn.disabled = true;
+  predictBtn.textContent = "Loading...";
+
+  try {
+    const player = playerInput.value.trim();
+    const line = parseFloat(document.getElementById('lineInput').value);
+    const team = teamSelect.value;
+    const opponent = oppSelect.value;
+
+    if (!player) throw new Error("Enter a player name.");
+    if (isNaN(line) || line <= 0) throw new Error("Enter a valid line.");
+    if (team === opponent) throw new Error("Team and opponent can't be the same.");
+
+    const payload = { player, propType: selectedProp, line, team, opponent };
+    const { predicted, confidence } = await getPrediction(payload);
+    renderResult({ player, propType: selectedProp, line, team, opponent, predicted, confidence });
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    predictBtn.disabled = false;
+    predictBtn.textContent = "Run prediction";
+  }
+}
+
+function showError(msg) {
+  errorMsg.textContent = msg;
+  errorMsg.classList.add('show');
+  resultCard.classList.remove('show');
+}
+
+function propLabel(propType) {
+  return propType === "rushing" ? "rushing yards" : "receiving yards";
+}
+
+function renderResult({ player, propType, line, team, opponent, predicted, confidence }) {
+  const isOver = predicted > line;
+  const badge = document.getElementById('resBadge');
+  badge.textContent = isOver ? "TAKE THE OVER" : "TAKE THE UNDER";
+  badge.className = "badge " + (isOver ? "over" : "under");
+
+  document.getElementById('resPlayerName').textContent = player;
+  document.getElementById('resMatchup').textContent =
+    `${team} vs ${opponent} · ${propLabel(propType)}`;
+
+  document.getElementById('resPredicted').textContent = predicted;
+  document.getElementById('resLine').textContent = line;
+
+  const maxScale = Math.max(predicted, line) * 1.25;
+  document.getElementById('meterMax').textContent = Math.round(maxScale);
+  document.getElementById('meterFill').style.width = `${Math.min(100, (predicted / maxScale) * 100)}%`;
+  document.getElementById('meterLine').style.left = `${Math.min(100, (line / maxScale) * 100)}%`;
+
+  document.getElementById('resConfidence').textContent = `${confidence}%`;
+
+  resultCard.classList.add('show');
+  resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>
