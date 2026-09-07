@@ -442,9 +442,9 @@
 </div>
 
 <script>
-// ---------------------------------------------------------------------
-// TEAMS (use the correct abbreviations from your schedule)
-// ---------------------------------------------------------------------
+
+const API_BASE = "https://nfl-prop-pred.onrender.com";
+
 const TEAMS = [
   ["ARI","Arizona Cardinals"],["ATL","Atlanta Falcons"],["BAL","Baltimore Ravens"],
   ["BUF","Buffalo Bills"],["CAR","Carolina Panthers"],["CHI","Chicago Bears"],
@@ -515,20 +515,17 @@ document.querySelectorAll('#propSegment button').forEach(btn => {
   });
 });
 
-
 const playerInput = document.getElementById('playerInput');
 const acList = document.getElementById('acList');
-let allPlayers = [...STATIC_PLAYERS];  // start with static list
+let allPlayers = [...STATIC_PLAYERS];
 let activeIndex = -1;
 
-// Attempt to fetch players from API to enrich autocomplete
 async function enrichPlayers() {
   try {
-    const res = await fetch('http://localhost:8000/players');
+    const res = await fetch(`${API_BASE}/players`);
     if (!res.ok) throw new Error('API not reachable');
     const data = await res.json();
     const apiPlayers = data.map(p => ({ name: p.player_name, team: p.team, pos: p.position || '' }));
-    // Merge with static (avoid duplicates by name)
     const existingNames = new Set(allPlayers.map(p => p.name.toLowerCase()));
     apiPlayers.forEach(p => {
       if (!existingNames.has(p.name.toLowerCase())) {
@@ -546,19 +543,14 @@ enrichPlayers();
 function renderMatches(query) {
   const q = query.trim().toLowerCase();
   if (!q) { acList.classList.remove('show'); return; }
-  const matches = allPlayers
-    .filter(p => p.name.toLowerCase().includes(q))
-    .slice(0, 8);
-
+  const matches = allPlayers.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8);
   acList.innerHTML = "";
   activeIndex = -1;
-
   if (matches.length === 0) {
     acList.innerHTML = `<div class="ac-empty">No match — you can still type any name and submit.</div>`;
     acList.classList.add('show');
     return;
   }
-
   matches.forEach(p => {
     const row = document.createElement('div');
     row.className = 'ac-item';
@@ -573,7 +565,6 @@ function selectPlayer(p) {
   playerInput.value = p.name;
   acList.classList.remove('show');
   if (p.team) teamSelect.value = p.team;
-  // Auto‑suggest prop based on position
   if (p.pos) {
     const suggested = (p.pos === 'RB' || p.pos === 'FB') ? 'rushing' : 'receiving';
     selectedProp = suggested;
@@ -598,12 +589,12 @@ playerInput.addEventListener('keydown', e => {
   items.forEach((it, i) => it.classList.toggle('active', i === activeIndex));
 });
 
-
-const API_URL = "https://nfl-prop-pred.onrender.com";
-
+// ---------------------------------------------------------------------
+// PREDICTION API CALL
+// ---------------------------------------------------------------------
 async function getPrediction(payload) {
   const requestBody = { ...payload, season: 2026, week: 1 };
-  const response = await fetch(API_URL, {
+  const response = await fetch(`${API_BASE}/predict`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody)
@@ -615,7 +606,6 @@ async function getPrediction(payload) {
   }
   return await response.json();
 }
-
 
 const predictBtn = document.getElementById('predictBtn');
 const errorMsg = document.getElementById('errorMsg');
