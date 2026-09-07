@@ -22,9 +22,7 @@
     --red-dim: #3A2020;
     --field-line: #2E3841;
   }
-
   *{ box-sizing: border-box; }
-
   html,body{
     margin:0;
     padding:0;
@@ -35,13 +33,11 @@
     font-family: 'Inter', -apple-system, sans-serif;
     min-height: 100vh;
   }
-
   .wrap{
     max-width: 620px;
     margin: 0 auto;
     padding: 48px 20px 80px;
   }
-
   header{
     display:flex;
     align-items:baseline;
@@ -50,7 +46,6 @@
     border-bottom: 1px solid var(--border);
     padding-bottom: 20px;
   }
-
   header h1{
     font-family:'Oswald', sans-serif;
     font-weight:700;
@@ -60,13 +55,11 @@
     color: var(--text);
   }
   header h1 span{ color: var(--amber); }
-
   header p{
     margin:0;
     color: var(--text-muted);
     font-size: 13px;
   }
-
   .card{
     background: var(--panel);
     border: 1px solid var(--border);
@@ -74,13 +67,11 @@
     padding: 28px;
     margin-bottom: 20px;
   }
-
   .field{
     margin-bottom: 22px;
     position: relative;
   }
   .field:last-child{ margin-bottom: 0; }
-
   label{
     display:block;
     font-size: 13px;
@@ -88,7 +79,6 @@
     margin-bottom: 8px;
     font-weight: 500;
   }
-
   input[type="text"], input[type="number"], select{
     width:100%;
     background: var(--panel-raised);
@@ -105,7 +95,6 @@
     border-color: var(--amber);
   }
   input::placeholder{ color: #56616C; }
-
   select{
     appearance: none;
     -webkit-appearance: none;
@@ -114,7 +103,6 @@
     background-position: right 14px center;
     padding-right: 34px;
   }
-
   .autocomplete-list{
     position:absolute;
     top: calc(100% + 4px);
@@ -143,7 +131,6 @@
   .ac-item .name{ color: var(--text); }
   .ac-item .meta{ color: var(--text-muted); font-size: 12px; font-family:'Oswald', sans-serif; letter-spacing: 0.3px; }
   .ac-empty{ padding: 14px; color: var(--text-muted); font-size: 13px; }
-
   .segmented{
     display:flex;
     background: var(--panel-raised);
@@ -169,13 +156,11 @@
     background: var(--amber);
     color: #1B1400;
   }
-
   .two-col{
     display:grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
   }
-
   .line-input-group{
     display:flex;
     align-items:stretch;
@@ -194,7 +179,6 @@
     font-family:'Oswald', sans-serif;
     letter-spacing: 0.4px;
   }
-
   .predict-btn{
     width:100%;
     margin-top: 26px;
@@ -217,7 +201,6 @@
     color: #6B7060;
     cursor: not-allowed;
   }
-
   .error-msg{
     color: var(--red);
     font-size: 13px;
@@ -225,12 +208,10 @@
     display:none;
   }
   .error-msg.show{ display:block; }
-
   #result{
     display:none;
   }
   #result.show{ display:block; }
-
   .result-head{
     display:flex;
     justify-content:space-between;
@@ -247,7 +228,6 @@
     font-size: 13px;
     margin-top: 4px;
   }
-
   .badge{
     font-family:'Oswald', sans-serif;
     font-weight:600;
@@ -258,7 +238,6 @@
   }
   .badge.over{ background: var(--green-dim); color: var(--green); border: 1px solid rgba(69,165,100,0.35); }
   .badge.under{ background: var(--red-dim); color: var(--red); border: 1px solid rgba(193,68,60,0.35); }
-
   .prediction-hero{
     display:flex;
     align-items:flex-end;
@@ -292,7 +271,6 @@
     align-self:center;
     padding-bottom: 10px;
   }
-
   .meter{
     position: relative;
     height: 8px;
@@ -321,7 +299,6 @@
     color: var(--text-muted);
     font-family:'Oswald', sans-serif;
   }
-
   .confidence-row{
     display:flex;
     justify-content:space-between;
@@ -336,7 +313,6 @@
     font-weight:600;
     font-size: 18px;
   }
-
   .disclaimer{
     text-align:center;
     color: #566068;
@@ -358,25 +334,24 @@
   <header>
     <div>
       <h1>Prop<span>Edge</span></h1>
-      <p>Model-driven rushing &amp; receiving yard predictions</p>
+      <p>Model-driven rushing, receiving &amp; passing yard predictions</p>
     </div>
   </header>
 
   <div class="card">
     <div class="field">
       <label for="playerInput">Player</label>
-      <input type="text" id="playerInput" placeholder="Search a player, e.g. Derrick Henry" autocomplete="off">
+      <input type="text" id="playerInput" placeholder="Search a player, e.g. Patrick Mahomes" autocomplete="off">
       <div class="autocomplete-list" id="acList"></div>
     </div>
-
     <div class="field">
       <label>Prop type</label>
       <div class="segmented" id="propSegment">
         <button type="button" class="active" data-prop="rushing">Rushing yards</button>
         <button type="button" data-prop="receiving">Receiving yards</button>
+        <button type="button" data-prop="passing">Passing yards</button>
       </div>
     </div>
-
     <div class="field">
       <label for="lineInput">Line (the over/under number from the book)</label>
       <div class="line-input-group">
@@ -384,7 +359,6 @@
         <div class="line-unit">YDS</div>
       </div>
     </div>
-
     <div class="field">
       <div class="two-col">
         <div>
@@ -397,7 +371,6 @@
         </div>
       </div>
     </div>
-
     <button class="predict-btn" id="predictBtn">Run prediction</button>
     <div class="error-msg" id="errorMsg"></div>
   </div>
@@ -494,9 +467,13 @@ const STATIC_PLAYERS = [
   { name: "Sam LaPorta", team: "DET", pos: "TE" },
   { name: "Trey McBride", team: "ARI", pos: "TE" },
   { name: "George Kittle", team: "SF", pos: "TE" },
-  { name: "Brock Bowers", team: "LV", pos: "TE" }
+  { name: "Brock Bowers", team: "LV", pos: "TE" },
+  { name: "Patrick Mahomes", team: "KC", pos: "QB" },
+  { name: "Josh Allen", team: "BUF", pos: "QB" },
+  { name: "Joe Burrow", team: "CIN", pos: "QB" },
+  { name: "Lamar Jackson", team: "BAL", pos: "QB" },
+  { name: "Jalen Hurts", team: "PHI", pos: "QB" }
 ];
-
 
 const teamSelect = document.getElementById('teamSelect');
 const oppSelect = document.getElementById('oppSelect');
@@ -540,6 +517,17 @@ async function enrichPlayers() {
 }
 enrichPlayers();
 
+// Warm up the backend (silent ping to reduce cold start)
+async function warmUpBackend() {
+  try {
+    await fetch(`${API_BASE}/players`);
+    console.log('Backend warmed up.');
+  } catch (e) {
+    // ignore
+  }
+}
+warmUpBackend();
+
 function renderMatches(query) {
   const q = query.trim().toLowerCase();
   if (!q) { acList.classList.remove('show'); return; }
@@ -566,7 +554,10 @@ function selectPlayer(p) {
   acList.classList.remove('show');
   if (p.team) teamSelect.value = p.team;
   if (p.pos) {
-    const suggested = (p.pos === 'RB' || p.pos === 'FB') ? 'rushing' : 'receiving';
+    let suggested = 'receiving'; // fallback
+    if (p.pos === 'RB' || p.pos === 'FB') suggested = 'rushing';
+    else if (p.pos === 'QB') suggested = 'passing';
+    // WR/TE default to receiving
     selectedProp = suggested;
     document.querySelectorAll('#propSegment button').forEach(b => {
       b.classList.toggle('active', b.dataset.prop === suggested);
@@ -589,9 +580,6 @@ playerInput.addEventListener('keydown', e => {
   items.forEach((it, i) => it.classList.toggle('active', i === activeIndex));
 });
 
-// ---------------------------------------------------------------------
-// PREDICTION API CALL
-// ---------------------------------------------------------------------
 async function getPrediction(payload) {
   const requestBody = { ...payload, season: 2026, week: 1 };
   const response = await fetch(`${API_BASE}/predict`, {
@@ -647,7 +635,8 @@ function showError(msg) {
 }
 
 function propLabel(propType) {
-  return propType === "rushing" ? "rushing yards" : "receiving yards";
+  const map = { rushing: 'rushing yards', receiving: 'receiving yards', passing: 'passing yards' };
+  return map[propType] || propType;
 }
 
 function renderResult({ player, propType, line, team, opponent, predicted, confidence }) {

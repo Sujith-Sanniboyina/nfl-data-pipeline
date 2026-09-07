@@ -1,3 +1,4 @@
+# api.py
 import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,19 +11,14 @@ from model.predict import PropPredictor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load data once at startup
+# Load data once at startup (this is relatively fast)
 logger.info("Loading player stats and schedules from Supabase...")
 df, schedules = load_player_game_stats_and_schedules()
 logger.info(f"Loaded {len(df)} player-game rows")
 
-# Pre‑load predictors
-predictors = {}
-for stat in ["rushing_yards", "receiving_yards"]:
-    predictors[stat] = PropPredictor(stat)
-
 app = FastAPI(title="PropEdge API")
 
-# Enable CORS for local development (and future deployment)
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,6 +26,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Lazy‑loaded predictors (only load when needed)
+_predictors = {}
+
+def get_predictor(stat: str):
+    if stat not in _predictors:
+        logger.info(f"Loading predictor for {stat}...")
+        _predictors[stat] = PropPredictor(stat)
+    return _predictors[stat]
 
 class PredictRequest(BaseModel):
     player: str
@@ -51,6 +56,7 @@ async def predict(request: PredictRequest):
     stat_map = {
         "rushing": "rushing_yards",
         "receiving": "receiving_yards",
+        "passing": "passing_yards",
     }
     if request.propType not in stat_map:
         raise HTTPException(status_code=400, detail="Invalid propType")
@@ -62,7 +68,9 @@ async def predict(request: PredictRequest):
         raise HTTPException(status_code=404, detail=f"Player '{request.player}' not found")
     player_id = player_rows.iloc[0]["player_id"]
 
-    predictor = predictors[stat]
+    # Get the predictor (lazy‑loaded)
+    predictor = get_predictor(stat)
+
     result = predictor.predict(
         player_game_stats_df=df,
         schedules_df=schedules,
@@ -71,7 +79,7 @@ async def predict(request: PredictRequest):
         week=request.week,
         team=request.team,
         opponent=request.opponent,
-        home_game=False,          # you can extend UI to pass this
+        home_game=False,          # UI can be extended later
         line=request.line
     )
 
