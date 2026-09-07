@@ -341,7 +341,7 @@
   <div class="card">
     <div class="field">
       <label for="playerInput">Player</label>
-      <input type="text" id="playerInput" placeholder="Search a player, e.g. Patrick Mahomes" autocomplete="off">
+      <input type="text" id="playerInput" placeholder="Search any player, e.g. Patrick Mahomes" autocomplete="off">
       <div class="autocomplete-list" id="acList"></div>
     </div>
     <div class="field">
@@ -432,49 +432,6 @@ const TEAMS = [
   ["TEN","Tennessee Titans"],["WAS","Washington Commanders"]
 ];
 
-const STATIC_PLAYERS = [
-  { name: "Derrick Henry", team: "BAL", pos: "RB" },
-  { name: "Saquon Barkley", team: "PHI", pos: "RB" },
-  { name: "Bijan Robinson", team: "ATL", pos: "RB" },
-  { name: "Jahmyr Gibbs", team: "DET", pos: "RB" },
-  { name: "Christian McCaffrey", team: "SF", pos: "RB" },
-  { name: "Jonathan Taylor", team: "IND", pos: "RB" },
-  { name: "De'Von Achane", team: "MIA", pos: "RB" },
-  { name: "Kyren Williams", team: "LA", pos: "RB" },
-  { name: "James Cook", team: "BUF", pos: "RB" },
-  { name: "Josh Jacobs", team: "GB", pos: "RB" },
-  { name: "Breece Hall", team: "NYJ", pos: "RB" },
-  { name: "Kenneth Walker III", team: "SEA", pos: "RB" },
-  { name: "Alvin Kamara", team: "NO", pos: "RB" },
-  { name: "Chase Brown", team: "CIN", pos: "RB" },
-  { name: "Bucky Irving", team: "TB", pos: "RB" },
-  { name: "Ja'Marr Chase", team: "CIN", pos: "WR" },
-  { name: "CeeDee Lamb", team: "DAL", pos: "WR" },
-  { name: "Justin Jefferson", team: "MIN", pos: "WR" },
-  { name: "Amon-Ra St. Brown", team: "DET", pos: "WR" },
-  { name: "Puka Nacua", team: "LA", pos: "WR" },
-  { name: "A.J. Brown", team: "PHI", pos: "WR" },
-  { name: "Malik Nabers", team: "NYG", pos: "WR" },
-  { name: "Nico Collins", team: "HOU", pos: "WR" },
-  { name: "Drake London", team: "ATL", pos: "WR" },
-  { name: "Garrett Wilson", team: "NYJ", pos: "WR" },
-  { name: "Tyreek Hill", team: "MIA", pos: "WR" },
-  { name: "Davante Adams", team: "LA", pos: "WR" },
-  { name: "Mike Evans", team: "TB", pos: "WR" },
-  { name: "Brian Thomas Jr.", team: "JAX", pos: "WR" },
-  { name: "Ladd McConkey", team: "LAC", pos: "WR" },
-  { name: "Travis Kelce", team: "KC", pos: "TE" },
-  { name: "Sam LaPorta", team: "DET", pos: "TE" },
-  { name: "Trey McBride", team: "ARI", pos: "TE" },
-  { name: "George Kittle", team: "SF", pos: "TE" },
-  { name: "Brock Bowers", team: "LV", pos: "TE" },
-  { name: "Patrick Mahomes", team: "KC", pos: "QB" },
-  { name: "Josh Allen", team: "BUF", pos: "QB" },
-  { name: "Joe Burrow", team: "CIN", pos: "QB" },
-  { name: "Lamar Jackson", team: "BAL", pos: "QB" },
-  { name: "Jalen Hurts", team: "PHI", pos: "QB" }
-];
-
 const teamSelect = document.getElementById('teamSelect');
 const oppSelect = document.getElementById('oppSelect');
 TEAMS.forEach(([abbr, name]) => {
@@ -494,51 +451,55 @@ document.querySelectorAll('#propSegment button').forEach(btn => {
 
 const playerInput = document.getElementById('playerInput');
 const acList = document.getElementById('acList');
-let allPlayers = [...STATIC_PLAYERS];
 let activeIndex = -1;
+let abortController = null; // to cancel previous requests
 
-async function enrichPlayers() {
+async function fetchPlayers(query) {
+  // Cancel previous request if any
+  if (abortController) {
+    abortController.abort();
+  }
+  abortController = new AbortController();
+
   try {
-    const res = await fetch(`${API_BASE}/players`);
-    if (!res.ok) throw new Error('API not reachable');
-    const data = await res.json();
-    const apiPlayers = data.map(p => ({ name: p.player_name, team: p.team, pos: p.position || '' }));
-    const existingNames = new Set(allPlayers.map(p => p.name.toLowerCase()));
-    apiPlayers.forEach(p => {
-      if (!existingNames.has(p.name.toLowerCase())) {
-        allPlayers.push(p);
-        existingNames.add(p.name.toLowerCase());
-      }
-    });
-    console.log(`Loaded ${allPlayers.length} players (static + API)`);
+    // Fetch all players and filter client‑side – more efficient than server‑side search.
+    // We'll cache the full list after first fetch.
+    if (!window._allPlayers) {
+      const res = await fetch(`${API_BASE}/players`, { signal: abortController.signal });
+      if (!res.ok) throw new Error('Failed to fetch players');
+      const data = await res.json();
+      window._allPlayers = data.map(p => ({ name: p.player_name, team: p.team, pos: p.position || '' }));
+    }
+    // Filter by query
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return window._allPlayers.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8);
   } catch (e) {
-    console.warn('Could not load players from API, using static list only.', e);
+    if (e.name === 'AbortError') return []; // ignore aborted requests
+    console.warn('Player fetch error:', e);
+    return []; // fallback to empty
   }
 }
-enrichPlayers();
 
-// Warm up the backend (silent ping to reduce cold start)
-async function warmUpBackend() {
-  try {
-    await fetch(`${API_BASE}/players`);
-    console.log('Backend warmed up.');
-  } catch (e) {
-    // ignore
-  }
-}
-warmUpBackend();
-
-function renderMatches(query) {
+async function renderMatches(query) {
   const q = query.trim().toLowerCase();
-  if (!q) { acList.classList.remove('show'); return; }
-  const matches = allPlayers.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8);
-  acList.innerHTML = "";
-  activeIndex = -1;
-  if (matches.length === 0) {
-    acList.innerHTML = `<div class="ac-empty">No match — you can still type any name and submit.</div>`;
-    acList.classList.add('show');
+  if (!q) {
+    acList.classList.remove('show');
     return;
   }
+
+  // Show loading indicator
+  acList.innerHTML = `<div class="ac-empty">Loading...</div>`;
+  acList.classList.add('show');
+
+  const matches = await fetchPlayers(q);
+  if (matches.length === 0) {
+    acList.innerHTML = `<div class="ac-empty">No match — type any name and submit.</div>`;
+    return;
+  }
+
+  acList.innerHTML = "";
+  activeIndex = -1;
   matches.forEach(p => {
     const row = document.createElement('div');
     row.className = 'ac-item';
@@ -554,10 +515,9 @@ function selectPlayer(p) {
   acList.classList.remove('show');
   if (p.team) teamSelect.value = p.team;
   if (p.pos) {
-    let suggested = 'receiving'; // fallback
+    let suggested = 'receiving';
     if (p.pos === 'RB' || p.pos === 'FB') suggested = 'rushing';
     else if (p.pos === 'QB') suggested = 'passing';
-    // WR/TE default to receiving
     selectedProp = suggested;
     document.querySelectorAll('#propSegment button').forEach(b => {
       b.classList.toggle('active', b.dataset.prop === suggested);
@@ -565,8 +525,15 @@ function selectPlayer(p) {
   }
 }
 
-playerInput.addEventListener('input', e => renderMatches(e.target.value));
-playerInput.addEventListener('focus', e => { if (e.target.value) renderMatches(e.target.value); });
+// Debounce input to avoid too many requests
+let debounceTimer;
+playerInput.addEventListener('input', e => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => renderMatches(e.target.value), 300);
+});
+playerInput.addEventListener('focus', e => {
+  if (e.target.value) renderMatches(e.target.value);
+});
 document.addEventListener('click', e => {
   if (!e.target.closest('.field')) acList.classList.remove('show');
 });
@@ -579,6 +546,20 @@ playerInput.addEventListener('keydown', e => {
   else return;
   items.forEach((it, i) => it.classList.toggle('active', i === activeIndex));
 });
+
+// Warm up backend by fetching players on page load (caches the list)
+async function warmUp() {
+  try {
+    const res = await fetch(`${API_BASE}/players`);
+    if (res.ok) {
+      const data = await res.json();
+      window._allPlayers = data.map(p => ({ name: p.player_name, team: p.team, pos: p.position || '' }));
+      console.log(`Loaded ${window._allPlayers.length} players for autocomplete`);
+    }
+  } catch (e) { /* ignore */ }
+}
+warmUp();
+
 
 async function getPrediction(payload) {
   const requestBody = { ...payload, season: 2026, week: 1 };
