@@ -599,7 +599,7 @@ playerInput.addEventListener('keydown', e => {
 });
 
 
-const API_URL = "http://localhost:8000/predict";
+const API_URL = "https://nfl-prop-pred.onrender.com";
 
 async function getPrediction(payload) {
   const requestBody = { ...payload, season: 2026, week: 1 };
